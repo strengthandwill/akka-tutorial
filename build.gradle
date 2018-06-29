@@ -12,6 +12,7 @@ dependencies {
   compile 'com.typesafe.akka:akka-actor_2.12:2.5.3'
   testCompile 'com.typesafe.akka:akka-testkit_2.12:2.5.3'
   testCompile 'junit:junit:4.12'
+  compile group: 'com.typesafe.akka', name: 'akka-actor_2.12', version: '2.5.13'
 }
 
 mainClassName = "com.lightbend.akka.sample.AkkaQuickstart"
