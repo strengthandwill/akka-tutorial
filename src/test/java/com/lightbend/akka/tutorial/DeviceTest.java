@@ -1,16 +1,19 @@
-package com.lightbend.akka.sample;
+package com.lightbend.akka.tutorial;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.testkit.javadsl.TestKit;
+import com.lightbend.akka.tutorial.DeviceGroup;
+import com.lightbend.akka.tutorial.DeviceManager;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Optional;
 
-import com.lightbend.akka.sample.Device;
+import com.lightbend.akka.tutorial.Device;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class DeviceTest {
     static ActorSystem system;
