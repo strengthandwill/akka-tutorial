@@ -6,10 +6,12 @@ import akka.actor.Props;
 import akka.actor.Terminated;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import scala.concurrent.duration.FiniteDuration;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class DeviceGroup extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
@@ -40,6 +42,44 @@ public class DeviceGroup extends AbstractActor {
             this.requestId = requestId;
             this.ids = ids;
         }
+    }
+
+    public static final class RequestAllTemperatures {
+        final long requestId;
+
+        public RequestAllTemperatures(long requestId) {
+            this.requestId = requestId;
+        }
+    }
+
+    public static final class RespondAllTemperatures {
+        final long requestId;
+        final Map<String, TemperatureReading> temperatures;
+
+        public RespondAllTemperatures(long requestId, Map<String, TemperatureReading> temperatures) {
+            this.requestId = requestId;
+            this.temperatures = temperatures;
+        }
+    }
+
+    public static interface  TemperatureReading {
+    }
+
+    public static final class Temperature implements TemperatureReading {
+        public final double value;
+
+        public Temperature(double value) {
+            this.value = value;
+        }
+    }
+
+    public static final class TemperatureNotAvailable implements  TemperatureReading {
+    }
+
+    public static final class DeviceNotAvailable implements  TemperatureReading {
+    }
+
+    public static final class DeviceTimedOut implements  TemperatureReading {
     }
 
     final Map<String, ActorRef> deviceIdToActor = new HashMap<>();
@@ -79,6 +119,18 @@ public class DeviceGroup extends AbstractActor {
         getSender().tell(new ReplyDeviceList(r.requestId, deviceIdToActor.keySet()), getSelf());
     }
 
+    private void onAllTemperatures(RequestAllTemperatures r) {
+        // since Java collections are mutable, we want to avoid sharing them between actors (since multiple Actors (threads)
+        // modifying the same mutable data-structure is not safe), and perform a defensive copy of the mutable map:
+        //
+        // Feel free to use your favourite immutable data-structures library with Akka in Java applications!
+        Map<ActorRef, String> actorToDeviceIdCopy = new HashMap<>(this.actorToDeviceId);
+
+        getContext().actorOf(DeviceGroupQuery.props(
+                actorToDeviceIdCopy, r.requestId, getSender(), new FiniteDuration(3, TimeUnit.SECONDS))
+        );
+    }
+
     private  void onTerminated(Terminated t) {
         ActorRef deviceActor = t.getActor();
         String deviceId = actorToDeviceId.get(deviceActor);
@@ -92,6 +144,7 @@ public class DeviceGroup extends AbstractActor {
         return receiveBuilder()
                 .match(DeviceManager.RequestTrackDevice.class, this::onTrackDevice)
                 .match(RequestDeviceList.class, this::onDeviceList)
+                .match(RequestAllTemperatures.class, this::onAllTemperatures)
                 .match(Terminated.class, this::onTerminated)
                 .build();
     }
